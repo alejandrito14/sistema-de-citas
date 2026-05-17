@@ -6,7 +6,10 @@ require_once APP_ROOT . '/models/Paciente.php';
 require_once APP_ROOT . '/models/Configuracion.php';
 require_once APP_ROOT . '/models/Servicio.php';
 require_once APP_ROOT . '/models/Pago.php';
+
 require_once APP_ROOT . '/models/Auditoria.php';
+require_once APP_ROOT . '/models/PagoDetalle.php';
+require_once APP_ROOT . '/models/PagoCuota.php';
 
 class CitaController {
     
@@ -21,6 +24,7 @@ class CitaController {
         $pacienteModel = new Paciente($db);
         $configModel = new Configuracion($db);
         $servicioModel = new Servicio($db);
+        $medicamentoModel = new Medicamento($db);
         
         // Filtros Visuales
         $fechaFiltro = isset($_GET['fecha']) && !empty($_GET['fecha']) ? $_GET['fecha'] : null;
@@ -39,6 +43,7 @@ class CitaController {
         $listaPacientes = $pacienteModel->leer();
         $empresa = $configModel->obtener();
         $listaServicios = $servicioModel->leerActivos();
+        $listaMedicamentos = $medicamentoModel->leer();
         
         require_once APP_ROOT . '/views/admin/citas.php';
     }
@@ -215,17 +220,40 @@ class CitaController {
             $database = new Database();
             $db = $database->connect();
             $pagoModel = new Pago($db);
+            $detalleModel = new PagoDetalle($db);
+            $cuotaModel = new PagoCuota($db);
             $auditoria = new Auditoria($db);
 
             $datos = [
                 'id_cita' => $_POST['id_cita'],
                 'monto' => $_POST['monto'],
+                'descuento' => $_POST['descuento'] ?? 0,
                 'metodo_pago' => $_POST['metodo_pago'],
                 'observaciones' => $_POST['observaciones']
             ];
 
+            // Registrar pago principal
             if($pagoModel->registrar($datos)) {
-                $auditoria->registrar($_SESSION['user_id'], 'PAGO', 'pagos', 0, 'Cobro: ' . $datos['monto']);
+                // Obtener el último id_pago insertado
+                $id_pago = $db->lastInsertId();
+
+                // Registrar detalles
+                $detalles = json_decode($_POST['detalle_json'] ?? '[]', true);
+                if (is_array($detalles)) {
+                    foreach ($detalles as $detalle) {
+                        $detalleModel->registrar($id_pago, $detalle);
+                    }
+                }
+
+                // Registrar cuotas si existen
+                $cuotas = json_decode($_POST['cuotas_json'] ?? '[]', true);
+                if (is_array($cuotas) && count($cuotas) > 0) {
+                    foreach ($cuotas as $cuota) {
+                        $cuotaModel->registrar($id_pago, $cuota);
+                    }
+                }
+
+                $auditoria->registrar($_SESSION['user_id'], 'PAGO', 'pagos', $id_pago, 'Cobro: ' . $datos['monto']);
                 header('Location: ' . BASE_URL . '/citas?msg=pagado');
             } else {
                 header('Location: ' . BASE_URL . '/citas?msg=error');

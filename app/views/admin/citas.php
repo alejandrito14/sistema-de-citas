@@ -1,5 +1,6 @@
 <?php require_once APP_ROOT . '/views/layouts/header.php'; ?>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
 
 <style>
@@ -70,9 +71,9 @@
         <div class="card shadow border-0 no-print">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-secondary fw-bold">Agenda Detallada</h5>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-3">
                     <input type="text" id="buscador" class="form-control form-control-sm" placeholder="Buscar rápido...">
-                    <button class="btn btn-primary fw-bold px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCita"><i class="fas fa-plus me-2"></i> Agendar</button>
+                    <button class="btn btn-primary fw-bold px-3 py-3 rounded-pill align-self-center" style="height:auto;min-height:unset;line-height:1.2;min-width:150px;" data-bs-toggle="modal" data-bs-target="#modalCita"> Agendar</button>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -145,33 +146,332 @@
                 <div class="modal-body p-4">
                     <div class="mb-3"><label class="fw-bold">Paciente</label><select name="paciente_id" class="form-select select2-paciente" required><option value="">Buscar Paciente...</option><?php $listaPacientes->execute(); while($pac = $listaPacientes->fetch(PDO::FETCH_ASSOC)): ?><option value="<?php echo $pac['id_usuario']; ?>"><?php echo $pac['nombre']; ?> - <?php echo $pac['telefono']; ?></option><?php endwhile; ?></select></div>
                     <div class="mb-3"><label class="fw-bold">Tipo de Servicio</label><select name="id_servicio" class="form-select" required onchange="actualizarPrecio(this)"><option value="">Seleccione...</option><?php $listaServicios->execute(); while($serv = $listaServicios->fetch(PDO::FETCH_ASSOC)): ?><option value="<?php echo $serv['id_servicio']; ?>" data-precio="<?php echo $serv['precio']; ?>"><?php echo $serv['nombre_servicio']; ?></option><?php endwhile; ?></select><div class="form-text text-end fw-bold text-success" id="precio_preview"></div></div>
-                    <div class="mb-3"><label class="fw-bold">Médico</label><select name="medico_id" class="form-select select2-medico" required><option value="">Buscar Médico...</option><?php $listaMedicos->execute(); while($med = $listaMedicos->fetch(PDO::FETCH_ASSOC)): ?><option value="<?php echo $med['id_medico']; ?>"><?php echo $med['nombre']; ?></option><?php endwhile; ?></select></div>
+                    <div class="mb-3 position-relative">
+                        <label class="fw-bold">Médico</label>
+                        <select name="medico_id" id="comboMedico" class="form-select select2-medico" required>
+                            <option value="">Buscar Médico...</option>
+                            <?php $listaMedicos->execute(); while($med = $listaMedicos->fetch(PDO::FETCH_ASSOC)): ?>
+                                <option value="<?php echo $med['id_medico']; ?>"><?php echo $med['nombre']; ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                        <div id="msgMedico" class="invalid-feedback" style="display:none;">Debes seleccionar un médico.</div>
+                    </div>
                     <div class="mb-3"><label>Fecha</label><input type="datetime-local" name="fecha" id="fecha_input" class="form-control" required></div>
                     <div class="mb-3"><label>Motivo</label><textarea name="motivo" class="form-control" required></textarea></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar</button></div>
             </form>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var form = document.querySelector('#modalCita form');
+                var medico = document.getElementById('comboMedico');
+                var msg = document.getElementById('msgMedico');
+                form.addEventListener('submit', function(e) {
+                    if (!medico.value) {
+                        e.preventDefault();
+                        medico.classList.add('is-invalid');
+                        msg.style.display = 'block';
+                        medico.focus();
+                    } else {
+                        medico.classList.remove('is-invalid');
+                        msg.style.display = 'none';
+                    }
+                });
+                medico.addEventListener('change', function() {
+                    if (medico.value) {
+                        medico.classList.remove('is-invalid');
+                        msg.style.display = 'none';
+                    }
+                });
+            });
+            </script>
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="modalCobrar" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-info text-white"><h5 class="modal-title fw-bold">Registrar Pago</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <form action="<?php echo BASE_URL; ?>/citas/cobrar" method="POST">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold">Registrar Cobro</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCobro" action="<?php echo BASE_URL; ?>/citas/cobrar" method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="id_cita" id="cobro_id">
-                    <div class="alert alert-info border-0 d-flex align-items-center"><i class="fas fa-user me-3 fa-2x"></i><div><strong>Paciente:</strong> <span id="cobro_paciente"></span><br><small>Confirma el monto a cobrar.</small></div></div>
-                    <div class="mb-3"><label class="fw-bold">Monto</label><input type="number" step="0.01" name="monto" id="cobro_monto" class="form-control form-control-lg text-end fw-bold text-success" required></div>
-                    <div class="mb-3"><label class="fw-bold">Método de Pago</label><select name="metodo_pago" class="form-select"><option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option><option value="Yape/Plin">Yape/Plin</option><option value="Transferencia">Transferencia</option></select></div>
-                    <div class="mb-3"><label>Observaciones</label><textarea name="observaciones" class="form-control" rows="2"></textarea></div>
+                    <!-- Encabezado paciente -->
+                    <div class="alert alert-info border-0 d-flex align-items-center mb-3">
+                        <i class="fas fa-user me-3 fa-2x"></i>
+                        <div>
+                            <strong>Paciente:</strong> <span id="cobro_paciente"></span>
+                            <br>
+                            <small>Confirma los servicios/productos y el monto a cobrar.</small>
+                        </div>
+                    </div>
+                    <div class="row g-4">
+                        <!-- Columna izquierda -->
+                        <div class="col-md-8">
+                            <!-- 1. Agregar servicios y productos -->
+                            <div class="mb-4">
+                                <label class="fw-bold mb-2">1. Agregar servicios y productos</label>
+                                <div class="input-group mb-2">
+                                    <select class="form-select" id="selectServicioProducto">
+                                        <option value="">Buscar servicio o producto...</option>
+                                        <optgroup label="Servicios">
+                                            <?php $listaServicios->execute(); while($serv = $listaServicios->fetch(PDO::FETCH_ASSOC)): ?>
+                                                <option value="servicio-<?php echo $serv['id_servicio']; ?>" data-tipo="Servicio" data-nombre="<?php echo $serv['nombre_servicio']; ?>" data-precio="<?php echo $serv['precio']; ?>">
+                                                    <?php echo $serv['nombre_servicio']; ?> ($<?php echo number_format($serv['precio'],2); ?>)
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </optgroup>
+                                        <optgroup label="Productos">
+                                            <?php $listaMedicamentos->execute(); while($med = $listaMedicamentos->fetch(PDO::FETCH_ASSOC)): ?>
+                                                <option value="producto-<?php echo $med['id_medicamento']; ?>" data-tipo="Producto" data-nombre="<?php echo $med['nombre_comercial']; ?>" data-precio="0">
+                                                    <?php echo $med['nombre_comercial']; ?>
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </optgroup>
+                                    </select>
+                                    <input type="number" class="form-control" id="precioServicioProducto" placeholder="Precio" min="0" step="0.01" style="max-width:120px;">
+                                    <input type="number" class="form-control" id="cantidadServicioProducto" placeholder="Cant." min="1" value="1" style="max-width:80px;">
+                                    <button type="button" class="btn btn-outline-primary" id="btnAgregarServicioProducto">Agregar</button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle" id="tablaServiciosProductos">
+                                        <thead>
+                                            <tr>
+                                                <th>Descripción</th>
+                                                <th class="text-center">Cantidad</th>
+                                                <th class="text-end">Precio ($)</th>
+                                                <th class="text-end">Total ($)</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Items agregados dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <!-- 2. Plan de pago -->
+                            <div class="mb-4">
+                                <label class="fw-bold mb-2">2. Plan de pago (cuotas)</label>
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="plan_pago" id="pagoUnico" value="unico" checked>
+                                        <label class="form-check-label" for="pagoUnico">Pago único</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="plan_pago" id="pagoCuotas" value="cuotas">
+                                        <label class="form-check-label" for="pagoCuotas">En cuotas</label>
+                                    </div>
+                                </div>
+                                <div id="cuotasContainer" class="mt-2" style="display:none;">
+                                    <label class="small">Cantidad de cuotas</label>
+                                    <input type="number" class="form-control form-control-sm mb-2" id="cantidadCuotas" min="2" max="12" value="2" style="max-width:100px;">
+                                    <div id="listaCuotas"></div>
+                                </div>
+                            </div>
+                            <!-- 4. Observaciones -->
+                            <div class="mb-3">
+                                <label class="fw-bold">4. Observaciones <span class="text-muted">(opcional)</span></label>
+                                <textarea name="observaciones" class="form-control" rows="2" placeholder="Agregar observaciones..."></textarea>
+                            </div>
+                        </div>
+                        <!-- Columna derecha -->
+                        <div class="col-md-4">
+                            <!-- 3. Resumen del cobro -->
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h6 class="fw-bold">Resumen del cobro</h6>
+                                    <div class="mb-2 d-flex justify-content-between"><span>Subtotal</span> <span>$<span id="resumenSubtotal">0.00</span></span></div>
+                                    <div class="mb-2 d-flex justify-content-between align-items-center">
+                                        <span>Descuento</span>
+                                        <span>
+                                            <input type="number" class="form-control form-control-sm d-inline-block ms-2" style="width:100px;vertical-align:middle;" id="inputDescuento" name="descuento" value="0" min="0" step="0.01" />
+                                        </span>
+                                    </div>
+                                    <div class="mb-2 d-flex justify-content-between"><span>Impuestos (0%)</span> <span>$<span id="resumenImpuestos">0.00</span></span></div>
+                                    <div class="mb-2 d-flex justify-content-between fs-5"><strong>Total a cobrar</strong> <span style="color:#009688;font-weight:bold">$<span id="resumenTotal">0.00</span></span></div>
+                                    <input type="hidden" name="monto" id="inputMontoTotal">
+                                </div>
+                            </div>
+                            <!-- 5. Método de pago -->
+                            <div class="mb-3">
+                                <label class="fw-bold">3. Método de pago</label>
+                                <select name="metodo_pago" class="form-select" required>
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Tarjeta">Tarjeta</option>
+                                    <option value="Yape/Plin">Yape/Plin</option>
+                                    <option value="Transferencia">Transferencia</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Campos ocultos para detalles y cuotas -->
+                    <input type="hidden" name="detalle_json" id="detalle_json">
+                    <input type="hidden" name="cuotas_json" id="cuotas_json">
                 </div>
-                <div class="modal-footer"><button type="submit" class="btn btn-info text-white fw-bold w-100">Confirmar Cobro</button></div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-info text-white fw-bold w-100">Confirmar Cobro</button>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+
+<script>
+// --- JS para manejo dinámico del modalCobrar ---
+$(function() {
+// Evitar submit por Enter en el modal de cobro
+    $('#formCobro').on('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.type !== 'textarea') {
+            e.preventDefault();
+            return false;
+        }
+    });
+let serviciosProductos = [];
+let cuotas = [];
+
+window.cargarDatosCobro = function(id, paciente, precio) {
+    document.getElementById('cobro_id').value = id;
+    document.getElementById('cobro_paciente').innerText = paciente;
+
+    // Limpiar servicios/productos y totales
+    serviciosProductos = [];
+    cuotas = [];
+    actualizarTablaServiciosProductos();
+    $('#inputDescuento').val(0);
+    $('#resumenImpuestos').text('0.00');
+    $('#resumenTotal').text('0.00');
+    $('#detalle_json').val('');
+    $('#cuotas_json').val('');
+    $('#formCobro')[0].reset();
+    // Ocultar cuotas
+    $('#cuotasContainer').hide();
+    // Si se pasa precio, puedes usarlo para precargar un servicio
+    if (precio && !isNaN(parseFloat(precio))) {
+        // Precargar un servicio base con referencia numérica (id de la cita o 0)
+        // Buscar el nombre del servicio seleccionado en el listado
+        let nombreServicio = '';
+        let select = document.getElementById('selectServicioProducto');
+        if (select) {
+            let opt = select.querySelector('option[value^="servicio-"]');
+            if (opt) nombreServicio = opt.getAttribute('data-nombre') || 'Servicio principal';
+        }
+        serviciosProductos.push({
+            tipo: 'Servicio',
+            referencia: parseInt(id) || 0,
+            descripcion: nombreServicio,
+            cantidad: 1,
+            precio: parseFloat(precio),
+            total: parseFloat(precio)
+        });
+        actualizarTablaServiciosProductos();
+    }
+}
+
+function actualizarTablaServiciosProductos() {
+    let tbody = $('#tablaServiciosProductos tbody');
+    tbody.empty();
+    let subtotal = 0;
+    serviciosProductos.forEach((item, idx) => {
+        let total = item.cantidad * item.precio;
+        subtotal += total;
+        tbody.append(`<tr>
+            <td>${item.descripcion}</td>
+            <td class="text-center">${item.cantidad}</td>
+            <td class="text-end">$${item.precio.toFixed(2)}</td>
+            <td class="text-end">$${(total).toFixed(2)}</td>
+            <td><button type="button" class="btn btn-sm btn-danger" onclick="eliminarServicioProducto(${idx})"><i class="fas fa-trash"></i></button></td>
+        </tr>`);
+    });
+    $('#resumenSubtotal').text(subtotal.toFixed(2));
+    let descuento = parseFloat($('#inputDescuento').val()) || 0;
+    let total = subtotal - descuento;
+    $('#resumenTotal').text(total.toFixed(2));
+    $('#inputMontoTotal').val(total.toFixed(2));
+    $('#detalle_json').val(JSON.stringify(serviciosProductos));
+}
+window.eliminarServicioProducto = function(idx) {
+    serviciosProductos.splice(idx, 1);
+    actualizarTablaServiciosProductos();
+}
+$('#btnAgregarServicioProducto').on('click', function() {
+    let selected = $('#selectServicioProducto option:selected');
+    let value = selected.val();
+    if (!value) return;
+    let tipo = selected.data('tipo');
+    let descripcion = selected.data('nombre');
+    let precio = parseFloat($('#precioServicioProducto').val()) || parseFloat(selected.data('precio')) || 0;
+    let cantidad = parseInt($('#cantidadServicioProducto').val()) || 1;
+    if (!descripcion || precio <= 0 || cantidad <= 0) return;
+    serviciosProductos.push({ tipo, referencia: value, descripcion, cantidad, precio, total: cantidad * precio });
+    actualizarTablaServiciosProductos();
+    $('#precioServicioProducto').val('');
+    $('#cantidadServicioProducto').val('1');
+});
+$('#selectServicioProducto').on('change', function() {
+    let selected = $(this).find('option:selected');
+    let precio = selected.data('precio');
+    $('#precioServicioProducto').val(precio);
+});
+$('#inputDescuento').on('input', function() {
+    actualizarTablaServiciosProductos();
+});
+
+// Plan de pago cuotas
+$('input[name="plan_pago"]').on('change', function() {
+    if ($('#pagoCuotas').is(':checked')) {
+        $('#cuotasContainer').show();
+        generarCuotas();
+    } else {
+        $('#cuotasContainer').hide();
+        cuotas = [];
+        $('#cuotas_json').val('');
+    }
+});
+$('#cantidadCuotas').on('input', function() {
+    generarCuotas();
+});
+function generarCuotas() {
+    let total = parseFloat($('#inputMontoTotal').val()) || 0;
+    let n = parseInt($('#cantidadCuotas').val()) || 2;
+    if (n < 2) n = 2;
+    let montoCuota = (total / n).toFixed(2);
+    let html = '';
+    cuotas = [];
+    for (let i = 1; i <= n; i++) {
+        let fecha = '';
+        let readonly = '';
+        let check = (i === 1) ? '<span class="text-success ms-2 align-middle" title="Pagada"><i class="fas fa-check-circle"></i></span>' : '';
+        html += `<div class="mb-2 d-flex align-items-center">
+            <strong class="me-2">Cuota ${i}:</strong>
+            <input type="number" class="form-control d-inline-block" style="width:120px;" value="${montoCuota}" min="0" step="0.01" onchange="actualizarMontoCuota(${i-1}, this.value)" ${readonly}>
+            <input type="date" class="form-control d-inline-block ms-2" style="width:170px;" onchange="actualizarFechaCuota(${i-1}, this.value)" ${readonly}>${check}
+        </div>`;
+        cuotas.push({ numero: i, monto: parseFloat(montoCuota), fecha: '' });
+    }
+    $('#listaCuotas').html(html);
+    $('#cuotas_json').val(JSON.stringify(cuotas));
+}
+window.actualizarMontoCuota = function(idx, val) {
+    cuotas[idx].monto = parseFloat(val) || 0;
+    $('#cuotas_json').val(JSON.stringify(cuotas));
+}
+window.actualizarFechaCuota = function(idx, val) {
+    cuotas[idx].fecha = val;
+    $('#cuotas_json').val(JSON.stringify(cuotas));
+}
+$('#formCobro').on('submit', function() {
+    // Actualiza los campos ocultos antes de enviar
+    $('#detalle_json').val(JSON.stringify(serviciosProductos));
+    $('#cuotas_json').val(JSON.stringify(cuotas));
+});
+});
+</script>
 
 
 

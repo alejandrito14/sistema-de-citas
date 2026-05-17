@@ -9,19 +9,16 @@ class Pago {
 
     // 1. REGISTRAR UN PAGO (Ya lo tenías, lo mantenemos)
     public function registrar($datos) {
-        $query = "INSERT INTO " . $this->table . " (id_cita, monto, metodo_pago, observaciones) 
-                  VALUES (:cita, :monto, :metodo, :obs)";
-        
+        $query = "INSERT INTO " . $this->table . " (id_cita, monto, descuento, metodo_pago, observaciones) 
+              VALUES (:cita, :monto, :descuento, :metodo, :obs)";
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':cita', $datos['id_cita']);
         $stmt->bindParam(':monto', $datos['monto']);
+        $stmt->bindParam(':descuento', $datos['descuento']);
         $stmt->bindParam(':metodo', $datos['metodo_pago']);
         $stmt->bindParam(':obs', $datos['observaciones']);
 
-        // Al registrar pago, actualizamos la cita para vincularla (aunque ya lo hacemos vía ID, esto asegura integridad)
-        // Nota: En este diseño simple, el ID de pago se genera auto, la relación es Cita -> Pago o Pago -> Cita.
-        // En tu DB tienes id_cita en la tabla pagos, eso es suficiente.
-        
         return $stmt->execute();
     }
 
