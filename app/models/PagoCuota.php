@@ -1,4 +1,4 @@
-<?php
+<?php 
 class PagoCuota {
     private $conn;
     private $table = 'pagos_cuotas';
@@ -9,7 +9,6 @@ class PagoCuota {
 
     // Registrar cuota
     public function registrar($id_pago, $cuota) {
-        // Si la cuota es la primera, marcar como pagada y poner fecha_pago
         $pagada = (isset($cuota['numero']) && $cuota['numero'] == 1) ? 1 : 0;
         $fecha_pago = null;
         if ($pagada) {
@@ -24,5 +23,23 @@ class PagoCuota {
         $stmt->bindParam(':pagada', $pagada);
         $stmt->bindParam(':fecha_pago', $fecha_pago);
         return $stmt->execute();
+    }
+
+    // Obtener cuotas pagadas y total por id_pago
+    public function obtenerResumenCuotas($id_pago) {
+        $query = "SELECT COUNT(*) as total, SUM(CASE WHEN pagada = 1 THEN 1 ELSE 0 END) as pagadas FROM " . $this->table . " WHERE id_pago = :id_pago";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id_pago', $id_pago);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Obtener todas las cuotas de un pago
+    public function obtenerCuotasPorPago($id_pago) {
+        $query = "SELECT id_cuota, numero_cuota, monto, fecha_vencimiento, pagada, fecha_pago, metodo_pago FROM " . $this->table . " WHERE id_pago = :id_pago ORDER BY numero_cuota ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id_pago', $id_pago);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -12,20 +12,21 @@ require_once APP_ROOT . '/models/PagoDetalle.php';
 require_once APP_ROOT . '/models/PagoCuota.php';
 
 class CitaController {
+
     
     public function index() {
-        
         if (session_status() === PHP_SESSION_NONE) session_start();
         $database = new Database();
         $db = $database->connect();
-        
+
         $citaModel = new Cita($db);
         $medicoModel = new Medico($db);
         $pacienteModel = new Paciente($db);
         $configModel = new Configuracion($db);
         $servicioModel = new Servicio($db);
         $medicamentoModel = new Medicamento($db);
-        
+        $cuotaModel = new PagoCuota($db);
+
         // Filtros Visuales
         $fechaFiltro = isset($_GET['fecha']) && !empty($_GET['fecha']) ? $_GET['fecha'] : null;
         $estadoFiltro = isset($_GET['estado']) && !empty($_GET['estado']) ? $_GET['estado'] : null;
@@ -37,15 +38,74 @@ class CitaController {
 
         // Obtener datos filtrados
         $resultado = $citaModel->leer($fechaFiltro, $estadoFiltro, $idMedicoFiltro, $idPacienteFiltro);
-        
+
+        // Obtener resumen de cuotas por cada cita (por id_pago)
+        $cuotasResumen = [];
+        if ($resultado && $resultado->rowCount() > 0) {
+            // Guardar el cursor actual
+            $rows = $resultado->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as $row) {
+                if (!empty($row['id_pago'])) {
+                    $cuotasResumen[$row['id_cita']] = $cuotaModel->obtenerResumenCuotas($row['id_pago']);
+                }
+            }
+            // Volver a poner el resultado en modo iterador
+            $resultado = new ArrayObject($rows);
+        }
+
         // Datos para formularios
         $listaMedicos = $medicoModel->leer();
         $listaPacientes = $pacienteModel->leer();
         $empresa = $configModel->obtener();
         $listaServicios = $servicioModel->leerActivos();
         $listaMedicamentos = $medicamentoModel->leer();
-        
-        require_once APP_ROOT . '/views/admin/citas.php';
+
+        // Pasar $cuotasResumen a la vista
+        require APP_ROOT . '/views/admin/citas.php';
+    }
+
+      public function ajaxCuotasCita() {
+        if (!isset($_GET['id_pago'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Falta id_pago']);
+            exit;
+        }
+        $database = new Database();
+        $db = $database->connect();
+        $cuotaModel = new PagoCuota($db);
+        $cuotas = $cuotaModel->obtenerCuotasPorPago($_GET['id_pago']);
+        header('Content-Type: application/json');
+        echo json_encode($cuotas);
+        exit;
+    }
+
+    // AJAX: Registrar pago de cuotas seleccionadas
+    public function ajaxPagarCuotas() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Método no permitido']);
+            exit;
+        }
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!isset($data['cuotas']) || !is_array($data['cuotas']) || !isset($data['metodo_pago'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Datos incompletos']);
+            exit;
+        }
+        $database = new Database();
+        $db = $database->connect();
+        $cuotaModel = new PagoCuota($db);
+        $fecha_pago = date('Y-m-d H:i:s');
+        foreach ($data['cuotas'] as $id_cuota) {
+            $query = "UPDATE pagos_cuotas SET pagada=1, fecha_pago=:fecha_pago, metodo_pago=:metodo_pago WHERE id_cuota=:id_cuota";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':fecha_pago', $fecha_pago);
+            $stmt->bindParam(':metodo_pago', $data['metodo_pago']);
+            $stmt->bindParam(':id_cuota', $id_cuota);
+            $stmt->execute();
+        }
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
     // API JSON para Calendario

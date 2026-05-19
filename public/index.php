@@ -1,3 +1,4 @@
+
 <?php
 // 1. INICIO DE CONFIGURACIÓN
 if (session_status() === PHP_SESSION_NONE) {
@@ -40,6 +41,16 @@ foreach ($controladores as $controlador) {
     if (file_exists($archivo)) {
         require_once $archivo;
     }
+}
+
+// Rutas AJAX para cuotas (debe ir después de cargar los controladores)
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'cuotas_cita') {
+    (new CitaController())->ajaxCuotasCita();
+    exit;
+}
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'pagar_cuotas') {
+    (new CitaController())->ajaxPagarCuotas();
+    exit;
 }
 
 // 4. LÓGICA DE ENRUTAMIENTO (ROUTER)

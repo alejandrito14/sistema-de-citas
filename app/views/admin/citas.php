@@ -1,4 +1,33 @@
+<?php
+// Asegurar que $citas sea un array puro aunque venga como ArrayObject
+if (isset($citas) && $citas instanceof ArrayObject) {
+    $citas = $citas->getArrayCopy();
+}
+?>
+
 <?php require_once APP_ROOT . '/views/layouts/header.php'; ?>
+
+<?php
+// Convertir los PDOStatement a arrays para poder usar count()
+if ($listaMedicos instanceof PDOStatement) {
+    $medicos = $listaMedicos->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $medicos = is_array($listaMedicos) ? $listaMedicos : [];
+}
+if ($listaPacientes instanceof PDOStatement) {
+    $pacientes = $listaPacientes->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $pacientes = is_array($listaPacientes) ? $listaPacientes : [];
+}
+// Convertir resultado a array para evitar errores con rowCount/fetch y soportar ArrayObject
+if ($resultado instanceof PDOStatement) {
+    $citas = $resultado->fetchAll(PDO::FETCH_ASSOC);
+} elseif ($resultado instanceof ArrayObject) {
+    $citas = $resultado->getArrayCopy();
+} else {
+    $citas = is_array($resultado) ? $resultado : [];
+}
+?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
@@ -27,7 +56,7 @@
     <div class="col-md-4">
         <div class="card border-0 shadow-sm text-white bg-primary h-100">
             <div class="card-body d-flex align-items-center justify-content-between">
-                <div><h6 class="mb-0 text-white-50">Citas Totales</h6><h2 class="mb-0 fw-bold"><?php echo $resultado->rowCount(); ?></h2></div>
+                <div><h6 class="mb-0 text-white-50">Citas Totales</h6><h2 class="mb-0 fw-bold"><?php echo count($citas); ?></h2></div>
                 <i class="fas fa-calendar-check fa-3x opacity-25"></i>
             </div>
         </div>
@@ -35,7 +64,7 @@
     <div class="col-md-4">
         <div class="card border-0 shadow-sm text-white bg-success h-100">
             <div class="card-body d-flex align-items-center justify-content-between">
-                <div><h6 class="mb-0 text-white-50">Staff Médico</h6><h2 class="mb-0 fw-bold"><?php echo $listaMedicos->rowCount(); ?></h2></div>
+                <div><h6 class="mb-0 text-white-50">Staff Médico</h6><h2 class="mb-0 fw-bold"><?php echo count($medicos); ?></h2></div>
                 <i class="fas fa-user-md fa-3x opacity-25"></i>
             </div>
         </div>
@@ -43,7 +72,7 @@
     <div class="col-md-4">
         <div class="card border-0 shadow-sm text-white h-100" style="background: linear-gradient(45deg, #6a11cb, #2575fc);">
             <div class="card-body d-flex align-items-center justify-content-between">
-                <div><h6 class="mb-0 text-white-50">Pacientes Activos</h6><h2 class="mb-0 fw-bold"><?php echo $listaPacientes->rowCount(); ?></h2></div>
+                <div><h6 class="mb-0 text-white-50">Pacientes Activos</h6><h2 class="mb-0 fw-bold"><?php echo count($pacientes); ?></h2></div>
                 <i class="fas fa-users fa-3x opacity-25"></i>
             </div>
         </div>
@@ -83,8 +112,8 @@
                             <tr><th class="ps-4">Hora</th><th>Paciente</th><th>Servicio / Médico</th><th>Importe</th><th>Estado</th><th>Pago</th><th class="text-center">Gestión</th></tr>
                         </thead>
                         <tbody>
-                            <?php if($resultado->rowCount() > 0): ?>
-                                <?php while($row = $resultado->fetch(PDO::FETCH_ASSOC)): ?>
+                            <?php if(count($citas) > 0): ?>
+                                <?php foreach($citas as $row): ?>
                                 <tr>
                                     <td class="ps-4 fw-bold"><?php echo date('d/m/Y', strtotime($row['fecha_cita'])); ?> <br><span class="text-primary"><?php echo date('H:i A', strtotime($row['fecha_cita'])); ?></span></td>
                                     <td>
@@ -124,9 +153,9 @@
                                         <a href="#" onclick="confirmarEliminacion(<?php echo $row['id_cita']; ?>)" class="btn btn-sm btn-outline-danger border-0"><i class="fas fa-trash-alt"></i></a>
                                     </td>
                                 </tr>
-                                <?php endwhile; ?>
+                                <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="7" class="text-center py-5 text-muted">No se encontraron citas.</td></tr>
+                                <tr><td colspan="8" class="text-center py-5 text-muted">No se encontraron citas.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
