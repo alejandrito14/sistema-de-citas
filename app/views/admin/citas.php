@@ -1,7 +1,7 @@
 <?php
 // Asegurar que $citas sea un array puro aunque venga como ArrayObject
 if (isset($citas) && $citas instanceof ArrayObject) {
-    $citas = $citas->getArrayCopy();
+    $citas = $citas->getArrayCopy(); // Asegurar que $citas sea un array puro aunque venga como ArrayObject
 }
 ?>
 
@@ -23,10 +23,24 @@ if ($listaPacientes instanceof PDOStatement) {
 if ($resultado instanceof PDOStatement) {
     $citas = $resultado->fetchAll(PDO::FETCH_ASSOC);
 } elseif ($resultado instanceof ArrayObject) {
-    $citas = $resultado->getArrayCopy();
+    $citas = $resultado->getArrayCopy(); // Convertir resultado a array para evitar errores con rowCount/fetch y soportar ArrayObject
 } else {
     $citas = is_array($resultado) ? $resultado : [];
 }
+?>
+
+<script>
+    var BASE_URL = '<?php echo BASE_URL; ?>';
+    // Asegurar que $citas sea un array puro aunque venga como ArrayObject
+
+</script>
+
+<?php
+
+    if (isset($citas) && $citas instanceof ArrayObject) {
+        $citas = $citas->getArrayCopy();
+    }
+
 ?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -40,17 +54,10 @@ if ($resultado instanceof PDOStatement) {
     .ticket-container { font-family: 'Courier New', Courier, monospace; border: 1px solid #333; padding: 20px; background: #fff; color: #000; }
     #calendar { max-width: 100%; margin: 0 auto; min-height: 600px; background: white; padding: 20px; border-radius: 10px; }
     .fc-event { cursor: pointer; }
+
 </style>
 
-<style media="print">
-    .sidebar-col, .top-navbar, .btn, .no-print, .card, form, .nav-tabs { display: none !important; }
-    body.printing-modal * { visibility: hidden; }
-    .modal.show, .modal.show * { visibility: visible; }
-    .modal.show { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; padding: 0; }
-    .modal-content { border: none; box-shadow: none; }
-    .btn-close, .modal-header, .modal-footer { display: none; }
-    .modal-body { padding: 0; }
-</style>
+
 
 <div class="row mb-4 no-print">
     <div class="col-md-4">
@@ -84,19 +91,17 @@ if ($resultado instanceof PDOStatement) {
     <li class="nav-item"><button class="nav-link fw-bold" id="calendario-tab" data-bs-toggle="tab" data-bs-target="#calendario"><i class="fas fa-calendar-alt me-2"></i> Calendario</button></li>
 </ul>
 
+
 <div class="tab-content" id="myTabContent">
     <div class="tab-pane fade show active" id="lista" role="tabpanel">
-        <div class="card shadow border-0 mb-4 no-print">
-            <div class="card-body py-3">
-                <form action="<?php echo BASE_URL; ?>/citas" method="GET" class="row g-2 align-items-center">
-                    <div class="col-auto"><span class="fw-bold text-secondary"><i class="fas fa-filter me-1"></i> Filtros:</span></div>
-                    <div class="col-auto"><input type="date" name="fecha" class="form-control form-control-sm" value="<?php echo isset($_GET['fecha']) ? $_GET['fecha'] : ''; ?>"></div>
-                    <div class="col-auto"><select name="estado" class="form-select form-select-sm"><option value="">- Estado -</option><option value="Pendiente">Pendiente</option><option value="Confirmada">Confirmada</option><option value="Finalizada">Finalizada</option></select></div>
-                    <div class="col-auto"><button type="submit" class="btn btn-dark btn-sm">Buscar</button> <a href="<?php echo BASE_URL; ?>/citas" class="btn btn-outline-secondary btn-sm">Limpiar</a></div>
-                </form>
-            </div>
+        <div class="card-body py-3">
+            <form action="<?php echo BASE_URL; ?>/citas" method="GET" class="row g-2 align-items-center">
+                <div class="col-auto"><span class="fw-bold text-secondary"><i class="fas fa-filter me-1"></i> Filtros:</span></div>
+                <div class="col-auto"><input type="date" name="fecha" class="form-control form-control-sm" value="<?php echo isset($_GET['fecha']) ? $_GET['fecha'] : ''; ?>"></div>
+                <div class="col-auto"><select name="estado" class="form-select form-select-sm"><option value="">- Estado -</option><option value="Pendiente">Pendiente</option><option value="Confirmada">Confirmada</option><option value="Finalizada">Finalizada</option></select></div>
+                <div class="col-auto"><button type="submit" class="btn btn-dark btn-sm">Buscar</button> <a href="<?php echo BASE_URL; ?>/citas" class="btn btn-outline-secondary btn-sm">Limpiar</a></div>
+            </form>
         </div>
-
         <div class="card shadow border-0 no-print">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-secondary fw-bold">Agenda Detallada</h5>
@@ -109,7 +114,7 @@ if ($resultado instanceof PDOStatement) {
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0" id="tablaCitas">
                         <thead class="bg-light text-secondary">
-                            <tr><th class="ps-4">Hora</th><th>Paciente</th><th>Servicio / Médico</th><th>Importe</th><th>Estado</th><th>Pago</th><th class="text-center">Gestión</th></tr>
+                            <tr><th class="ps-4">Hora</th><th>Paciente</th><th>Servicio / Médico</th><th>Importe</th><th>Estado</th><th>Pago</th><th>Cuotas</th><th class="text-center">Gestión</th></tr>
                         </thead>
                         <tbody>
                             <?php if(count($citas) > 0): ?>
@@ -129,6 +134,19 @@ if ($resultado instanceof PDOStatement) {
                                     <td>
                                         <?php if($row['id_pago']): ?><span class="badge bg-success bg-opacity-75"><i class="fas fa-check-circle me-1"></i> Pagado</span><?php else: ?><span class="badge bg-danger bg-opacity-75"><i class="fas fa-times-circle me-1"></i> Pendiente</span><?php endif; ?>
                                     </td>
+
+                                     <td class="text-center">
+                                        <?php
+
+                                        $res = isset($cuotasResumen[$row['id_cita']]) ? $cuotasResumen[$row['id_cita']] : null;
+                                        if ($res && $res['total'] > 0) {
+                                            printf('<a href="#" class="badge bg-light text-dark me-2" data-bs-toggle="modal" data-bs-target="#modalCuotas" onclick="cargarCuotas(\'%s\', \'%s\')">%s/%s</a>', addslashes($row['id_pago']), addslashes($row['paciente']), $res['pagadas'], $res['total']);
+                                        } else {
+                                            printf('<a href="#" class="badge bg-secondary me-2" data-bs-toggle="modal" data-bs-target="#modalCuotas" onclick="cargarCuotas(\'%s\', \'%s\')">-</a>', addslashes($row['id_pago']), addslashes($row['paciente']));
+                                        }
+                                        ?>
+                                    </td>
+                                    <!-- Columna Gestión muestra los botones de acción -->
                                     <td class="text-center">
                                         <?php if(!$row['id_pago'] && $row['estado'] != 'Cancelada'): ?>
                                             <button class="btn btn-sm btn-outline-info border-0 me-1" title="Pagar" data-bs-toggle="modal" data-bs-target="#modalCobrar" onclick="cargarDatosCobro('<?php echo $row['id_cita']; ?>', '<?php echo $row['paciente']; ?>', '<?php echo $row['precio']; ?>')"><i class="fas fa-money-bill-wave"></i></button>
@@ -142,16 +160,16 @@ if ($resultado instanceof PDOStatement) {
                                         <?php if($row['estado'] == 'Finalizada'): ?>
                                             <button class="btn btn-sm btn-outline-dark border-0 me-1" title="Receta" data-bs-toggle="modal" data-bs-target="#modalReceta" onclick="cargarReceta('<?php echo $row['paciente']; ?>', '<?php echo $row['medico']; ?>', '<?php echo $row['especialidad']; ?>', '<?php echo date('d/m/Y', strtotime($row['fecha_cita'])); ?>', `<?php echo $row['diagnostico']; ?>`, `<?php echo $row['prescripcion']; ?>`, '<?php echo $row['peso']; ?>', '<?php echo $row['talla']; ?>', '<?php echo $row['presion_arterial']; ?>', '<?php echo $row['temperatura']; ?>')"><i class="fas fa-file-prescription"></i></button>
                                         <?php endif; ?>
-                                        
                                         <?php if($row['estado'] == 'Finalizada' && $row['dias_reposo'] > 0): ?>
                                             <button class="btn btn-sm btn-outline-primary border-0 me-1" title="Certificado Médico" data-bs-toggle="modal" data-bs-target="#modalCertificado" onclick="cargarCertificado('<?php echo $row['paciente']; ?>', '<?php echo $row['medico']; ?>', '<?php echo $row['especialidad']; ?>', '<?php echo $row['documento_identidad'] ?? '---'; ?>', '<?php echo date('d/m/Y', strtotime($row['fecha_cita'])); ?>', '<?php echo $row['dias_reposo']; ?>', `<?php echo $row['diagnostico']; ?>`, '<?php echo $row['colegiatura'] ?? 'CMP -----'; ?>')"><i class="fas fa-certificate"></i></button>
                                         <?php endif; ?>
-
                                         <?php if($row['estado'] != 'Finalizada' && $row['estado'] != 'Cancelada'): ?>
                                             <button class="btn btn-sm btn-outline-primary border-0 me-1" data-bs-toggle="modal" data-bs-target="#modalEditar" onclick="cargarDatosEditar('<?php echo $row['id_cita']; ?>','<?php echo $row['id_medico']; ?>','<?php echo $row['id_servicio']; ?>','<?php echo date('Y-m-d\TH:i', strtotime($row['fecha_cita'])); ?>','<?php echo $row['motivo']; ?>','<?php echo $row['estado']; ?>')"><i class="fas fa-edit"></i></button>
                                         <?php endif; ?>
                                         <a href="#" onclick="confirmarEliminacion(<?php echo $row['id_cita']; ?>)" class="btn btn-sm btn-outline-danger border-0"><i class="fas fa-trash-alt"></i></a>
                                     </td>
+                                    <!-- Columna Cuotas muestra el resumen de cuotas -->
+                                   
                                 </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
@@ -163,8 +181,35 @@ if ($resultado instanceof PDOStatement) {
             </div>
         </div>
     </div>
+    <div class="tab-pane fade" id="calendario" role="tabpanel">
+        <div class="card shadow border-0 mb-4 no-print">
+            <div class="card-body">
+                <div id="calendar"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <div class="tab-pane fade" id="calendario" role="tabpanel"><div class="card shadow border-0"><div class="card-body"><div id='calendar'></div></div></div></div>
+<!-- Modal de Cuotas (fuera del bucle) -->
+<div class="modal fade" id="modalCuotas" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-list-ol me-2"></i>Registrar Pago de Cuotas</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="cuotasContenido">
+                    <div class="text-center text-secondary py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i><br> Cargando cuotas...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="modalCita" tabindex="-1">
@@ -500,6 +545,63 @@ $('#formCobro').on('submit', function() {
     $('#cuotas_json').val(JSON.stringify(cuotas));
 });
 });
+
+// --- CARGAR CUOTAS EN MODAL ---
+// Recibe id_pago en vez de id_cita
+function cargarCuotas(id_pago, paciente) {
+    $('#cuotasContenido').html('<div class="text-center text-secondary py-5"><i class="fas fa-spinner fa-spin fa-2x"></i><br> Cargando cuotas...</div>');
+    $.ajax({
+        url: BASE_URL + '/index.php?ajax=cuotas_cita',
+        method: 'GET',
+        data: { id_pago: id_pago },
+        dataType: 'json',
+        success: function(res) {
+            if (!res || !Array.isArray(res) || res.length === 0) {
+                $('#cuotasContenido').html('<div class="alert alert-info">No hay cuotas registradas para esta cita.</div>');
+                return;
+            }
+            let totalPlan = 0, totalPendiente = 0, pagadas = 0;
+            let html = '';
+            html += `<div class="mb-3"><strong>Paciente:</strong> ${paciente}</div>`;
+            html += `<div class="table-responsive"><table class="table align-middle">
+                <thead><tr>
+                    <th>Cuota</th>
+                    <th>Vencimiento</th>
+                    <th>Monto</th>
+                    <th>Pagado</th>
+                    <th>Pendiente</th>
+                </tr></thead><tbody>`;
+            res.forEach(function(cuota, idx) {
+                totalPlan += parseFloat(cuota.monto);
+                let badge = cuota.pagada ? '<span class="badge bg-success">Pagada</span>' : '<span class="badge bg-warning text-dark">Pendiente</span>';
+                let pendiente = cuota.pagada ? 0 : parseFloat(cuota.monto);
+                if (!cuota.pagada) totalPendiente += pendiente; else pagadas++;
+                html += `<tr>
+                    <td>${cuota.numero_cuota} de ${res.length}</td>
+                    <td>${cuota.fecha_vencimiento ? new Date(cuota.fecha_vencimiento).toLocaleDateString() : ''}</td>
+                    <td>$${parseFloat(cuota.monto).toFixed(2)}</td>
+                    <td>${badge}</td>
+                    <td>$${pendiente.toFixed(2)}</td>
+                </tr>`;
+            });
+            html += `</tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="2">Total del plan</td>
+                        <td>$${totalPlan.toFixed(2)}</td>
+                        <td></td>
+                        <td>$${totalPendiente.toFixed(2)}</td>
+                    </tr>
+                </tfoot>
+            </table></div>`;
+            html += `<div class="alert alert-info mt-3">Has seleccionado ${pagadas} cuota(s) pagada(s) y quedan ${res.length - pagadas} pendiente(s).</div>`;
+            $('#cuotasContenido').html(html);
+        },
+        error: function() {
+            $('#cuotasContenido').html('<div class="alert alert-danger">No se pudieron cargar las cuotas.</div>');
+        }
+    });
+}
 </script>
 
 
@@ -781,16 +883,33 @@ $('#formCobro').on('submit', function() {
         else div.innerHTML = '';
     }
 
+
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth', locale: 'es',
-            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
-            events: '<?php echo BASE_URL; ?>/citas/listarEventos',
-            eventClick: function(info) { Swal.fire({ title: info.event.title, html: `Estado: ${info.event.extendedProps.estado}`, icon: 'info' }); }
-        });
-        var tabEl = document.querySelector('button[data-bs-target="#calendario"]');
-        tabEl.addEventListener('shown.bs.tab', function (event) { calendar.render(); });
+        if (calendarEl) {
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                events: '<?php echo BASE_URL; ?>/citas/listarEventos',
+                eventClick: function(info) {
+                    Swal.fire({
+                        title: info.event.title,
+                        html: `Estado: ${info.event.extendedProps.estado}`,
+                        icon: 'info'
+                    });
+                }
+            });
+            // Forzar renderizado inmediato
+            calendar.render();
+            // También renderizar si el usuario cambia de pestaña
+            var tabEl = document.querySelector('button[data-bs-target="#calendario"]');
+            if (tabEl) {
+                tabEl.addEventListener('shown.bs.tab', function (event) {
+                    calendar.render();
+                });
+            }
+        }
     });
 
     window.onload = function() {

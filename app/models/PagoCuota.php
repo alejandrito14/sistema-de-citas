@@ -37,6 +37,7 @@ class PagoCuota {
     // Obtener todas las cuotas de un pago
     public function obtenerCuotasPorPago($id_pago) {
         $query = "SELECT id_cuota, numero_cuota, monto, fecha_vencimiento, pagada, fecha_pago, metodo_pago FROM " . $this->table . " WHERE id_pago = :id_pago ORDER BY numero_cuota ASC";
+       
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_pago', $id_pago);
         $stmt->execute();

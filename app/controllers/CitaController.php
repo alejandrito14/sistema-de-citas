@@ -70,6 +70,7 @@ class CitaController {
             echo json_encode(['error' => 'Falta id_pago']);
             exit;
         }
+    ;
         $database = new Database();
         $db = $database->connect();
         $cuotaModel = new PagoCuota($db);
