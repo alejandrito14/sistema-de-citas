@@ -17,7 +17,9 @@ class MedicamentoController {
         $database = new Database();
         $db = $database->connect();
         $medModel = new Medicamento($db);
-        
+        $configModel = new Configuracion($db);
+        $empresa = $configModel->obtener();
+
         $resultado = $medModel->leer();
         
         require_once APP_ROOT . '/views/admin/medicamentos.php';
@@ -37,7 +39,9 @@ class MedicamentoController {
                 'nombre_comercial' => $_POST['nombre_comercial'],
                 'nombre_generico' => $_POST['nombre_generico'],
                 'presentacion' => $_POST['presentacion'],
-                'stock' => $_POST['stock']
+                'stock' => $_POST['stock'],
+                'precio_compra' => isset($_POST['precio_compra']) ? floatval($_POST['precio_compra']) : 0.00,
+                'precio_venta' => isset($_POST['precio_venta']) ? floatval($_POST['precio_venta']) : 0.00
             ];
 
             if($medModel->crear($datos)) {
@@ -64,6 +68,8 @@ class MedicamentoController {
                 'nombre_generico' => $_POST['nombre_generico'],
                 'presentacion' => $_POST['presentacion'],
                 'stock' => $_POST['stock'],
+                'precio_compra' => isset($_POST['precio_compra']) ? floatval($_POST['precio_compra']) : 0.00,
+                'precio_venta' => isset($_POST['precio_venta']) ? floatval($_POST['precio_venta']) : 0.00,
                 'estado' => $_POST['estado']
             ];
 

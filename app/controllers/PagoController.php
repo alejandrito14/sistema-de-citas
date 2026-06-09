@@ -22,7 +22,10 @@ class PagoController {
         $fechaInicio = isset($_GET['inicio']) ? $_GET['inicio'] : date('Y-m-01');
         $fechaFin = isset($_GET['fin']) ? $_GET['fin'] : date('Y-m-d');
 
-        $resultado = $pagoModel->listar($fechaInicio, $fechaFin);
+        $stmt = $pagoModel->listar($fechaInicio, $fechaFin);
+        $pagos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Calcular total recaudado considerando cuotas pagadas en el rango
+        $totalRecaudado = $pagoModel->totalRecaudado($fechaInicio, $fechaFin);
         
         require_once APP_ROOT . '/views/admin/pagos.php';
     }

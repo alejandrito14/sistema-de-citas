@@ -148,4 +148,22 @@ class PacienteController {
             }
         }
     }
+
+    // Endpoint AJAX para búsqueda de pacientes (select2)
+    public function buscarAjax() {
+        $q = $_GET['q'] ?? '';
+        $database = new Database();
+        $db = $database->connect();
+        $pacienteModel = new Paciente($db);
+        $results = [];
+        if ($q !== '') {
+            $rows = $pacienteModel->buscar($q, 50);
+            foreach ($rows as $r) {
+                $results[] = ['id' => $r['id_usuario'], 'text' => $r['nombre'] . ' - ' . ($r['telefono'] ?? $r['documento_identidad'] ?? '')];
+            }
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['results' => $results]);
+        exit;
+    }
 }

@@ -36,11 +36,21 @@ class PagoCuota {
 
     // Obtener todas las cuotas de un pago
     public function obtenerCuotasPorPago($id_pago) {
-        $query = "SELECT id_cuota, numero_cuota, monto, fecha_vencimiento, pagada, fecha_pago, metodo_pago FROM " . $this->table . " WHERE id_pago = :id_pago ORDER BY numero_cuota ASC";
+        $query = "SELECT id_cuota, numero_cuota, monto, fecha_vencimiento, pagada, fecha_pago, metodo_pago, descuento, observaciones, comprobante_transferencia FROM " . $this->table . " WHERE id_pago = :id_pago ORDER BY numero_cuota ASC";
        
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id_pago', $id_pago);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Marcar cuotas como pagadas (con comprobante y observaciones)
+    public function marcarCuotasPagadas($ids, $metodo, $descuento = 0, $observaciones = null, $comprobante = null) {
+        if (!is_array($ids) || count($ids) === 0) return false;
+        $in  = str_repeat('?,', count($ids) - 1) . '?';
+        $sql = "UPDATE " . $this->table . " SET pagada = 1, fecha_pago = NOW(), metodo_pago = ?, descuento = ?, observaciones = ?, comprobante_transferencia = ? WHERE id_cuota IN ($in)";
+        $params = array_merge([$metodo, $descuento, $observaciones, $comprobante], $ids);
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute($params);
     }
 }

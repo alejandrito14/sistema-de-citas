@@ -19,6 +19,8 @@
                         <th class="ps-3">Nombre Comercial</th>
                         <th>Genérico</th>
                         <th>Presentación</th>
+                        <th class="text-end">Precio Compra</th>
+                        <th class="text-end">Precio Venta</th>
                         <th class="text-center">Stock</th>
                         <th class="text-center">Estado</th>
                         <?php if($_SESSION['user_role_id'] == 1): ?>
@@ -33,6 +35,8 @@
                             <td class="ps-3 fw-bold text-dark"><?php echo $row['nombre_comercial']; ?></td>
                             <td class="text-muted"><?php echo $row['nombre_generico']; ?></td>
                             <td><?php echo $row['presentacion']; ?></td>
+                            <td class="text-end fw-bold text-muted"><?php echo ($empresa['moneda'] ?? '') . ' ' . number_format($row['precio_compra'] ?? 0,2); ?></td>
+                            <td class="text-end fw-bold text-success"><?php echo ($empresa['moneda'] ?? '') . ' ' . number_format($row['precio_venta'] ?? 0,2); ?></td>
                             <td class="text-center">
                                 <?php if($row['stock'] > 10): ?>
                                     <span class="badge bg-success rounded-pill"><?php echo $row['stock']; ?></span>
@@ -54,7 +58,7 @@
                             <td class="text-center">
                                 <button class="btn btn-sm btn-outline-primary border-0 me-1" 
                                         data-bs-toggle="modal" data-bs-target="#modalEditar"
-                                        onclick="cargarDatos('<?php echo $row['id_medicamento']; ?>', '<?php echo $row['nombre_comercial']; ?>', '<?php echo $row['nombre_generico']; ?>', '<?php echo $row['presentacion']; ?>', '<?php echo $row['stock']; ?>', '<?php echo $row['estado']; ?>')">
+                                        onclick="cargarDatos('<?php echo $row['id_medicamento']; ?>', '<?php echo addslashes($row['nombre_comercial']); ?>', '<?php echo addslashes($row['nombre_generico']); ?>', '<?php echo addslashes($row['presentacion']); ?>', '<?php echo $row['stock']; ?>', '<?php echo $row['estado']; ?>', '<?php echo isset($row['precio_compra']) ? $row['precio_compra'] : 0; ?>', '<?php echo isset($row['precio_venta']) ? $row['precio_venta'] : 0; ?>')">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <a href="#" onclick="confirmarEliminacion(<?php echo $row['id_medicamento']; ?>)" class="btn btn-sm btn-outline-danger border-0">
@@ -96,6 +100,16 @@
                         <div class="col-md-6 mb-3">
                             <label class="fw-bold">Stock Inicial</label>
                             <input type="number" name="stock" class="form-control" value="0" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold">Precio de Compra</label>
+                            <input type="number" name="precio_compra" class="form-control" step="0.01" min="0" value="0.00">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold">Precio de Venta</label>
+                            <input type="number" name="precio_venta" class="form-control" step="0.01" min="0" value="0.00">
                         </div>
                     </div>
                 </div>
@@ -145,6 +159,16 @@
                             <input type="number" name="stock" id="edit_stock" class="form-control" required>
                         </div>
                     </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="fw-bold">Precio de Compra</label>
+                                <input type="number" name="precio_compra" id="edit_precio_compra" class="form-control" step="0.01" min="0">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="fw-bold">Precio de Venta</label>
+                                <input type="number" name="precio_venta" id="edit_precio_venta" class="form-control" step="0.01" min="0">
+                            </div>
+                        </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -156,13 +180,15 @@
 </div>
 
 <script>
-    function cargarDatos(id, comercial, generico, presentacion, stock, estado) {
+    function cargarDatos(id, comercial, generico, presentacion, stock, estado, precio_compra = 0, precio_venta = 0) {
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_comercial').value = comercial;
         document.getElementById('edit_generico').value = generico;
         document.getElementById('edit_presentacion').value = presentacion;
         document.getElementById('edit_stock').value = stock;
         document.getElementById('edit_estado').value = estado;
+        document.getElementById('edit_precio_compra').value = precio_compra;
+        document.getElementById('edit_precio_venta').value = precio_venta;
     }
 
     function confirmarEliminacion(id) {

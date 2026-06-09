@@ -73,6 +73,7 @@ $logo_app = !empty($empresa_header['logo']) ? $empresa_header['logo'] : null;
                 <?php if($rol == 1 || $rol == 4): ?>
                     <a href="<?php echo BASE_URL; ?>/medicamentos" class="<?php echo (strpos($uri, 'medicamentos') !== false) ? 'active' : ''; ?>"><i class="fas fa-pills me-2"></i> Farmacia</a>
                     <a href="<?php echo BASE_URL; ?>/pacientes" class="<?php echo (strpos($uri, 'pacientes') !== false) ? 'active' : ''; ?>"><i class="fas fa-users me-2"></i> Pacientes</a>
+                    <a href="<?php echo BASE_URL; ?>/cotizaciones" class="<?php echo (strpos($uri, 'cotizaciones') !== false) ? 'active' : ''; ?>"><i class="fas fa-file-signature me-2"></i> Cotizaciones</a>
                     <a href="<?php echo BASE_URL; ?>/pagos" class="<?php echo (strpos($uri, 'pagos') !== false) ? 'active' : ''; ?>"><i class="fas fa-cash-register me-2"></i> Caja / Pagos</a>
                 <?php endif; ?>
 

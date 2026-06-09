@@ -299,8 +299,8 @@ if ($resultado instanceof PDOStatement) {
                                         </optgroup>
                                         <optgroup label="Productos">
                                             <?php $listaMedicamentos->execute(); while($med = $listaMedicamentos->fetch(PDO::FETCH_ASSOC)): ?>
-                                                <option value="producto-<?php echo $med['id_medicamento']; ?>" data-tipo="Producto" data-nombre="<?php echo $med['nombre_comercial']; ?>" data-precio="0">
-                                                    <?php echo $med['nombre_comercial']; ?>
+                                                <option value="producto-<?php echo $med['id_medicamento']; ?>" data-tipo="Producto" data-nombre="<?php echo $med['nombre_comercial']; ?>" data-precio="<?php echo isset($med['precio_venta']) ? $med['precio_venta'] : 0; ?>">
+                                                    <?php echo $med['nombre_comercial']; ?> (<?php echo ($empresa['moneda'] ?? 'S/.') . ' ' . number_format($med['precio_venta'] ?? 0,2); ?>)
                                                 </option>
                                             <?php endwhile; ?>
                                         </optgroup>

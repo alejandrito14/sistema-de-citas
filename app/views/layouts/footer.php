@@ -34,16 +34,37 @@
         });
 
         // Select2 para Modales
-        $('.select2-paciente').select2({
-            theme: "bootstrap-5",
-            dropdownParent: $('#modalCita'),
-            width: '100%'
+        const BASE_URL_JS = (typeof BASE_URL !== 'undefined') ? BASE_URL : '<?php echo BASE_URL; ?>';
+
+        $('.select2-paciente').each(function() {
+            const $el = $(this);
+            const parentModal = $el.closest('.modal');
+            $el.select2({
+                theme: "bootstrap-5",
+                dropdownParent: parentModal.length ? parentModal : $(document.body),
+                width: '100%',
+                ajax: {
+                    url: BASE_URL_JS + '/index.php?ajax=buscar_pacientes',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) { return { q: params.term }; },
+                    processResults: function(data) { return data; },
+                    cache: true
+                },
+                minimumInputLength: 1,
+                templateResult: function(item) { return item.text; },
+                templateSelection: function(item) { return item.text || item.id ? item.text : ''; }
+            });
         });
-        
-        $('.select2-medico').select2({
-            theme: "bootstrap-5",
-            dropdownParent: $('#modalCita'),
-            width: '100%'
+
+        $('.select2-medico').each(function() {
+            const $el = $(this);
+            const parentModal = $el.closest('.modal');
+            $el.select2({
+                theme: "bootstrap-5",
+                dropdownParent: parentModal.length ? parentModal : $(document.body),
+                width: '100%'
+            });
         });
     });
 

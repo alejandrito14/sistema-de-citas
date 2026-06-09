@@ -49,6 +49,24 @@ class Cita {
         return $stmt;
     }
 
+    // Obtener cita por id
+    public function obtenerPorId($id_cita) {
+        $query = 'SELECT c.id_cita, c.fecha_cita, c.motivo, c.estado, c.id_medico, c.id_paciente, c.id_servicio,
+                         u.nombre as paciente, m_u.nombre as medico, e.nombre as especialidad, s.nombre_servicio, s.precio
+                  FROM ' . $this->table . ' c
+                  JOIN usuarios u ON c.id_paciente = u.id_usuario
+                  JOIN medicos m ON c.id_medico = m.id_medico
+                  JOIN usuarios m_u ON m.id_usuario = m_u.id_usuario
+                  JOIN especialidades e ON m.id_especialidad = e.id_especialidad
+                  LEFT JOIN servicios s ON c.id_servicio = s.id_servicio
+                  WHERE c.id_cita = :id_cita'
+        ;
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id_cita', $id_cita);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // 2. ESTADÍSTICAS
     public function obtenerEstadisticasEstado($id_medico = null, $id_paciente = null) {
         $query = "SELECT estado, COUNT(*) as cantidad FROM " . $this->table;

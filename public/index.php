@@ -19,11 +19,17 @@ $scriptPath = rtrim($scriptPath, '/');
 define('BASE_URL', $protocol . $domainName . $scriptPath);
 define('APP_ROOT', dirname(__DIR__) . '/app');
 
+// Cargar autoload de Composer si existe (dompdf y otras dependencias)
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
+
 // 3. AUTOCARGA INTELIGENTE DE CONTROLADORES
 $controladores = [
     'AuthController', 
     'HomeController', 
     'CitaController', 
+    'CotizacionController', 
     'MedicoController', 
     'PacienteController', 
     'ServicioController', 
@@ -50,6 +56,16 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'cuotas_cita') {
 }
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'pagar_cuotas') {
     (new CitaController())->ajaxPagarCuotas();
+    exit;
+}
+// AJAX: detalle de pago
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'detalle_pago') {
+    (new CitaController())->ajaxDetallePago();
+    exit;
+}
+// AJAX: buscar pacientes para select2
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'buscar_pacientes') {
+    (new PacienteController())->buscarAjax();
     exit;
 }
 
@@ -116,12 +132,28 @@ switch ($controllerName) {
         if (class_exists('CitaController')) {
             $controller = new CitaController();
             if (isset($urlArray[1])) {
+                if ($urlArray[1] == 'ajaxDetallePago') $controller->ajaxDetallePago();
+                elseif ($urlArray[1] == 'imprimirTicket') $controller->imprimirTicket();
                 if ($urlArray[1] == 'guardar') $controller->guardar();
                 elseif ($urlArray[1] == 'actualizar') $controller->actualizar();
                 elseif ($urlArray[1] == 'finalizar') $controller->finalizar();
                 elseif ($urlArray[1] == 'eliminar') $controller->eliminar();
                 elseif ($urlArray[1] == 'listarEventos') $controller->listarEventos();
                 elseif ($urlArray[1] == 'cobrar') $controller->cobrar(); // Ruta de Pagos
+                else $controller->index();
+            } else {
+                $controller->index();
+            }
+        }
+        break;
+
+    case 'cotizaciones':
+        if (class_exists('CotizacionController')) {
+            $controller = new CotizacionController();
+            if (isset($urlArray[1])) {
+                if ($urlArray[1] == 'guardar') $controller->guardar();
+                elseif ($urlArray[1] == 'convertir') $controller->convertir();
+                elseif ($urlArray[1] == 'imprimir') $controller->imprimir();
                 else $controller->index();
             } else {
                 $controller->index();

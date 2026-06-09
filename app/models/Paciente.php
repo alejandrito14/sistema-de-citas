@@ -34,6 +34,17 @@ class Paciente {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // 10. BÚSQUEDA para select2/ajax
+    public function buscar($q, $limit = 20) {
+        $term = '%' . $q . '%';
+        $query = 'SELECT id_usuario, nombre, telefono, documento_identidad FROM ' . $this->table . ' WHERE id_rol = 3 AND (nombre LIKE :term OR telefono LIKE :term OR documento_identidad LIKE :term) ORDER BY nombre ASC LIMIT :lim';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':term', $term);
+        $stmt->bindValue(':lim', (int)$limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // 3. OBTENER HISTORIAL CLÍNICO
     public function obtenerHistorial($id_paciente) {
         $query = "SELECT c.fecha_cita, c.motivo, c.diagnostico, c.prescripcion, c.estado,
