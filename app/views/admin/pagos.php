@@ -6,6 +6,7 @@
             <div class="card-body d-flex align-items-center justify-content-between p-4">
                 <div>
                         <h6 class="mb-0 text-white-50">Total Recaudado (Selección)</h6>
+
                         <h2 class="mb-0 fw-bold" id="totalMonto"><?php echo ($empresa['moneda'] ?? 'S/.') . ' ' . number_format($totalRecaudado ?? 0, 2); ?></h2>
                 </div>
                 <i class="fas fa-cash-register fa-3x opacity-50"></i>
@@ -57,7 +58,8 @@
                                         if (!empty($row['total_cuotas']) && $row['total_cuotas'] > 0) {
                                             $enRango = isset($row['cuotas_pagadas_en_rango']) ? (int)$row['cuotas_pagadas_en_rango'] : 0;
                                             $pagadasTot = isset($row['cuotas_pagadas_total']) ? (int)$row['cuotas_pagadas_total'] : 0;
-                                            echo $enRango . ' / ' . $row['total_cuotas'];
+                                            // Mostrar como enlace que abre el modal de registro de pago de cuotas
+                                            printf('<a href="#" class="badge bg-light text-dark me-2" data-bs-toggle="modal" data-bs-target="#modalCuotas" onclick="cargarCuotas(\'%s\', \'%s\')">%s/%s</a>', addslashes((string)($row['id_pago'] ?? '')), addslashes((string)($row['paciente'] ?? '')), $enRango, $row['total_cuotas']);
                                             if ($pagadasTot == $row['total_cuotas']) echo ' <span class="badge bg-success ms-2">Todas pagadas</span>';
                                         } else {
                                             echo '<span class="text-muted">Sin cuotas</span>';
@@ -84,9 +86,15 @@
                                 ?>
                             </td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-primary" onclick="mostrarDetalle(<?php echo $row['id_cita'] ?? 'null'; ?>)" title="Detalle">
-                                    <i class="fas fa-info-circle"></i>
-                                </button>
+                                    <?php if (!empty($row['id_cita'])): ?>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="mostrarDetalle(<?php echo $row['id_cita']; ?>)" title="Detalle">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="cargarCuotas('<?php echo addslashes((string)($row['id_pago'] ?? '')); ?>', '<?php echo addslashes((string)($row['paciente'] ?? '')); ?>')" title="Ver Cuotas">
+                                            <i class="fas fa-list-ol"></i>
+                                        </button>
+                                    <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; endif; ?>
@@ -114,11 +122,9 @@
             }
         })
     }
-</script>
 
-<?php require_once APP_ROOT . '/views/layouts/footer.php'; ?>
-
-<!-- Modal Detalle Pago -->
+    </script>
+    
 <div class="modal fade" id="modalDetallePago" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -138,40 +144,6 @@
     </div>
 </div>
 
-<script>
-function mostrarDetalle(id_cita) {
-        if (!id_cita) return alert('No hay cita asociada.');
-        var modal = new bootstrap.Modal(document.getElementById('modalDetallePago'));
-        $('#detallePagoContent').html('<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
-        modal.show();
-        $.get(BASE_URL + '/index.php?ajax=detalle_pago', { id_cita: id_cita }, function(resp) {
-                if (!resp || !resp.success) {
-                        $('#detallePagoContent').html('<div class="alert alert-danger">No se pudo cargar el detalle.</div>');
-                        return;
-                }
-                var d = resp.data;
-                var html = '';
-                html += '<div class="mb-2"><strong>Paciente:</strong> ' + (d.paciente || '-') + '</div>';
-                html += '<div class="mb-2"><strong>Nota:</strong> ' + (d.nro_nota || '-') + ' <strong class="ms-3">Fecha:</strong> ' + (d.fecha || '-') + '</div>';
-                html += '<div class="mb-2"><strong>Estado:</strong> <span class="badge ' + (d.estado_badge || 'bg-secondary') + '">' + (d.estado_txt || '') + '</span></div>';
-                html += '<div class="row"><div class="col-md-6"><h6>Conceptos</h6>';
-                if (d.conceptos && d.conceptos.length>0) {
-                        html += '<table class="table table-sm"><thead><tr><th>Desc</th><th class="text-end">Total</th></tr></thead><tbody>';
-                        d.conceptos.forEach(function(c){ html += '<tr><td>' + c.descripcion + '</td><td class="text-end">' + d.moneda + ' ' + parseFloat(c.total).toFixed(2) + '</td></tr>'; });
-                        html += '</tbody></table>';
-                } else html += '<div class="text-muted">Sin conceptos registrados.</div>';
-                html += '</div>';
-                html += '<div class="col-md-6"><h6>Pagos / Cuotas</h6>';
-                if (d.pagos && d.pagos.length>0) {
-                        html += '<table class="table table-sm"><thead><tr><th>Fecha</th><th>Método</th><th class="text-end">Monto</th></tr></thead><tbody>';
-                        d.pagos.forEach(function(p){ html += '<tr><td>' + p.fecha + '</td><td>' + p.metodo + '</td><td class="text-end">' + d.moneda + ' ' + parseFloat(p.monto).toFixed(2) + '</td></tr>'; });
-                        html += '</tbody></table>';
-                } else html += '<div class="text-muted">No hay pagos registrados.</div>';
-                html += '</div></div>';
-                html += '<div class="mt-3"><strong>Total Nota:</strong> ' + d.moneda + ' ' + parseFloat(d.total_nota).toFixed(2) + ' <strong class="ms-3">Total Pagado:</strong> ' + d.moneda + ' ' + parseFloat(d.total_pagado).toFixed(2) + '</div>';
-                $('#detallePagoContent').html(html);
-        }, 'json').fail(function(){
-                $('#detallePagoContent').html('<div class="alert alert-danger">Error de comunicación.</div>');
-        });
-}
-</script>
+
+
+<?php require_once APP_ROOT . '/views/layouts/footer.php'; ?>

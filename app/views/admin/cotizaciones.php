@@ -62,7 +62,9 @@
                             <td>
                                 <?php
                                     $cls = 'secondary';
-                                    if ($row['estado'] === 'convertida') $cls = 'success';
+                                    // aceptar tanto 'convertida' histórico como 'aprobada' nuevo
+                                    $estadoLower = strtolower($row['estado'] ?? '');
+                                    if ($estadoLower === 'convertida' || $estadoLower === 'aprobada') $cls = 'success';
                                     elseif ($row['estado'] === 'borrador') $cls = 'warning text-dark';
                                 ?>
                                 <span class="badge bg-<?php echo $cls; ?>"><?php echo ucfirst($row['estado']); ?></span>
@@ -381,12 +383,11 @@ $('#selectServicioProducto').on('change', function() {
         if (cotId) {
             // pedir preview de la cotización
             $.post(BASE_URL + '/cotizaciones/convertir', { id_cotizacion: cotId, preview: 1 }, function(resp) {
-                if (resp && resp.success && resp.cotizacion) {
+                    if (resp && resp.success && resp.cotizacion) {
                     const cot = resp.cotizacion;
-                    // cargar paciente si se conoce el id
-                    let pacienteText = '-';
-                    if (cot.id_paciente) {
-                        // intentar obtener nombre desde el select2 o dejar id
+                    // cargar paciente: preferir nombre devuelto por el backend, si no intentar resolver desde selects
+                    let pacienteText = cot.paciente_nombre || '-';
+                    if ((pacienteText === '-' || !pacienteText) && cot.id_paciente) {
                         let opt = $('.select2-paciente option[value="' + cot.id_paciente + '"]');
                         if (opt && opt.length) pacienteText = opt.text(); else pacienteText = 'Paciente #' + cot.id_paciente;
                     }
@@ -501,6 +502,14 @@ $('#formCobro').on('submit', function() {
     // Actualiza los campos ocultos antes de enviar
     $('#detalle_json').val(JSON.stringify(serviciosProductos));
     $('#cuotas_json').val(JSON.stringify(cuotas));
+    // Asegurar que id_cotizacion esté presente si el flujo vino desde la conversión
+    try {
+        var curCot = $('#cobro_id_cotizacion').val();
+        if ((!curCot || curCot === '') && $('#modalConfirmConvert').length) {
+            var dc = $('#modalConfirmConvert').data('cotid');
+            if (dc) $('#cobro_id_cotizacion').val(dc);
+        }
+    } catch(e) { console.warn('No se pudo sincronizar id_cotizacion en el submit del cobro', e); }
 });
 
 }
@@ -617,7 +626,7 @@ function cargarCuotas(id_pago, paciente) {
                     success: function(resp) {
                         if (resp && resp.success) {
                             alert('Pago registrado correctamente.');
-                            $('#modalCuotas').modal('hide');
+                            try { if (typeof window.hideModalById === 'function') hideModalById('modalCuotas'); else { var m = bootstrap.Modal.getInstance(document.getElementById('modalCuotas')); if (m) m.hide(); } } catch(e) { console.warn('no se pudo ocultar modal via API', e); }
                             location.reload();
                         } else {
                             alert('No se pudo registrar el pago.');
@@ -723,10 +732,11 @@ window.handleConfirmConvertRequest = function(id) {
         });
     }).then(function(resp){
         console.log('resp convertir preview (fetch):', resp);
-        if (resp && resp.success && resp.cotizacion) {
+                    if (resp && resp.success && resp.cotizacion) {
             var cot = resp.cotizacion;
-            var pacienteText = '-';
-            if (cot.id_paciente) {
+            // preferir nombre proveniente del servidor
+            var pacienteText = cot.paciente_nombre || '-';
+            if ((pacienteText === '-' || !pacienteText) && cot.id_paciente) {
                 var opt = document.querySelector('.select2-paciente option[value="' + cot.id_paciente + '"]');
                 if (opt) pacienteText = opt.textContent; else pacienteText = 'Paciente #' + cot.id_paciente;
             }

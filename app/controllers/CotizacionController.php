@@ -102,6 +102,15 @@ class CotizacionController {
 
         // Si se solicitó preview, devolver la cotización en JSON para precargar modal de cobro
         if ($isPreview) {
+            // intentar enriquecer con nombre de paciente si está disponible
+            if (!empty($cot['id_paciente'])) {
+                try {
+                    require_once APP_ROOT . '/models/Paciente.php';
+                    $pacModel = new Paciente($db);
+                    $p = $pacModel->obtenerPorId($cot['id_paciente']);
+                    if ($p) $cot['paciente_nombre'] = $p['nombre'] ?? ($p['nombre_completo'] ?? null);
+                } catch (Exception $e) { /* noop */ }
+            }
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'cotizacion' => $cot]);
             return;
@@ -113,7 +122,7 @@ class CotizacionController {
             'monto' => $cot['total'] ?? 0,
             'descuento' => $cot['descuento_valor'] ?? 0,
             'metodo_pago' => 'Pendiente',
-            'observaciones' => 'Convertida desde cotización #' . $id,
+            'observaciones' => 'Aprobada desde cotización #' . $id,
             'id_cotizacion' => $id
         ];
 
@@ -131,7 +140,8 @@ class CotizacionController {
                 ];
                 $detalleModel->registrar($id_pago, $detalle);
             }
-            $cotModel->actualizarEstado($id, 'convertida');
+            // Marcar la cotización como aprobada al convertir a pago
+            $cotModel->actualizarEstado($id, 'aprobada');
             header('Content-Type: application/json'); echo json_encode(['success'=>true,'id_pago'=>$id_pago]); return;
         } else {
             header('Content-Type: application/json'); echo json_encode(['success'=>false,'msg'=>'Error al crear pago']); return;

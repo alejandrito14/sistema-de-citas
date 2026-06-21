@@ -9,7 +9,9 @@ class PagoCuota {
 
     // Registrar cuota
     public function registrar($id_pago, $cuota) {
-        $pagada = (isset($cuota['numero']) && $cuota['numero'] == 1) ? 1 : 0;
+        // No marcar cuotas automáticamente como pagadas a menos que se indique explícitamente.
+        // Si el cliente envía 'pagada' en el objeto cuota, respetarlo; sino por defecto 0.
+        $pagada = isset($cuota['pagada']) ? ((int)$cuota['pagada'] ? 1 : 0) : 0;
         $fecha_pago = null;
         if ($pagada) {
             $fecha_pago = date('Y-m-d H:i:s');

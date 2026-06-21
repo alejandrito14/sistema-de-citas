@@ -526,24 +526,39 @@ class CitaController {
                 // Registrar cuotas si existen
                 $cuotas = json_decode($_POST['cuotas_json'] ?? '[]', true);
                 if (is_array($cuotas) && count($cuotas) > 0) {
+                    // Asegurar que la primera cuota quede marcada como pagada
+                    $isFirst = true;
                     foreach ($cuotas as $cuota) {
+                        if ($isFirst) {
+                            // forzar flag 'pagada' en la primera cuota
+                            $cuota['pagada'] = 1;
+                            $isFirst = false;
+                        } else {
+                            // si viene explícito pagada, respetarlo; si no, asegurar 0
+                            if (!isset($cuota['pagada'])) $cuota['pagada'] = 0;
+                        }
                         $cuotaModel->registrar($id_pago, $cuota);
                     }
                 }
 
                 $auditoria->registrar($_SESSION['user_id'], 'PAGO', 'pagos', $id_pago, 'Cobro: ' . $datos['monto']);
 
-                // Si venía de una cotización, marcarla como convertida
+                // Si venía de una cotización, marcarla como aprobada
                 if ($id_cotizacion) {
                     try {
                         require_once APP_ROOT . '/models/Cotizacion.php';
                         $cotModel = new Cotizacion($db);
-                        $cotModel->actualizarEstado($id_cotizacion, 'convertida');
+                        $cotModel->actualizarEstado($id_cotizacion, 'aprobada');
                     } catch (Exception $e) {
                         // no bloquear el flujo si ocurre error
                     }
                 }
-                header('Location: ' . BASE_URL . '/citas?msg=pagado');
+                // Si el pago provino de una cotización, volver al listado de cotizaciones para verla ahí
+                if ($id_cotizacion) {
+                    header('Location: ' . BASE_URL . '/cotizaciones?msg=pagado');
+                } else {
+                    header('Location: ' . BASE_URL . '/citas?msg=pagado');
+                }
             } else {
                 header('Location: ' . BASE_URL . '/citas?msg=error');
             }

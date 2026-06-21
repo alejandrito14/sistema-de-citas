@@ -406,7 +406,7 @@ $('#formCotizacion').on('submit', function(e){
     ajaxSaveCotizacion(function(resp){
         if (resp && resp.success) {
             alert('Cotización guardada.');
-            $('#modalCotizar').modal('hide');
+            try { if (typeof window.hideModalById === 'function') hideModalById('modalCotizar'); else { var m = bootstrap.Modal.getInstance(document.getElementById('modalCotizar')); if (m) m.hide(); } } catch(e) { console.warn('no se pudo ocultar modal via API', e); }
         } else {
             alert('Error al guardar la cotización');
         }
@@ -1001,7 +1001,7 @@ function cargarCuotas(id_pago, paciente) {
                     success: function(resp) {
                         if (resp && resp.success) {
                             alert('Pago registrado correctamente.');
-                            $('#modalCuotas').modal('hide');
+                            try { if (typeof window.hideModalById === 'function') hideModalById('modalCuotas'); else { var m = bootstrap.Modal.getInstance(document.getElementById('modalCuotas')); if (m) m.hide(); } } catch(e) { console.warn('no se pudo ocultar modal via API', e); }
                             location.reload();
                         } else {
                             alert('No se pudo registrar el pago.');
@@ -1139,7 +1139,7 @@ function cargarCuotas(id_pago, paciente) {
                     success: function(resp) {
                         if (resp && resp.success) {
                             alert('Pago registrado correctamente.');
-                            $('#modalCuotas').modal('hide');
+                            try { if (typeof window.hideModalById === 'function') hideModalById('modalCuotas'); else { var m = bootstrap.Modal.getInstance(document.getElementById('modalCuotas')); if (m) m.hide(); } } catch(e) { console.warn('no se pudo ocultar modal via API', e); }
                             // Opcional: recargar la página o actualizar la fila
                             location.reload();
                         } else {

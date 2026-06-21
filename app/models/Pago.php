@@ -9,55 +9,65 @@ class Pago {
 
     // 1. REGISTRAR UN PAGO (Ya lo tenías, lo mantenemos)
     public function registrar($datos) {
-        // Intentar insertar incluyendo id_cotizacion si fue provisto. Si falla (columna no existe), hacer fallback sin la columna.
+        // Construir INSERT dinámico según los campos provistos (id_cita e id_cotizacion pueden ser opcionales)
         $hasCot = isset($datos['id_cotizacion']) && $datos['id_cotizacion'] !== null && $datos['id_cotizacion'] !== '';
-        if ($hasCot) {
-            try {
-                $query = "INSERT INTO " . $this->table . " (id_cita, monto, descuento, metodo_pago, observaciones, id_cotizacion) 
-                      VALUES (:cita, :monto, :descuento, :metodo, :obs, :idcot)";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':cita', $datos['id_cita']);
-                $stmt->bindParam(':monto', $datos['monto']);
-                $stmt->bindParam(':descuento', $datos['descuento']);
-                $stmt->bindParam(':metodo', $datos['metodo_pago']);
-                $stmt->bindParam(':obs', $datos['observaciones']);
-                $stmt->bindParam(':idcot', $datos['id_cotizacion'], PDO::PARAM_INT);
-                return $stmt->execute();
-            } catch (Exception $e) {
-                // intentar fallback sin id_cotizacion
-            }
+        $hasCita = isset($datos['id_cita']) && $datos['id_cita'] !== null && $datos['id_cita'] !== '';
+
+        $columns = [];
+        $placeholders = [];
+        $params = [];
+
+        if ($hasCita) {
+            $columns[] = 'id_cita';
+            $placeholders[] = ':cita';
+            $params[':cita'] = $datos['id_cita'];
         }
 
-        $query = "INSERT INTO " . $this->table . " (id_cita, monto, descuento, metodo_pago, observaciones) 
-              VALUES (:cita, :monto, :descuento, :metodo, :obs)";
+        // campos obligatorios
+        $columns[] = 'monto'; $placeholders[] = ':monto'; $params[':monto'] = $datos['monto'];
+        $columns[] = 'descuento'; $placeholders[] = ':descuento'; $params[':descuento'] = $datos['descuento'];
+        $columns[] = 'metodo_pago'; $placeholders[] = ':metodo'; $params[':metodo'] = $datos['metodo_pago'];
+        $columns[] = 'observaciones'; $placeholders[] = ':obs'; $params[':obs'] = $datos['observaciones'];
 
+        if ($hasCot) {
+            $columns[] = 'id_cotizacion';
+            $placeholders[] = ':idcot';
+            $params[':idcot'] = $datos['id_cotizacion'];
+        }
+
+        $query = "INSERT INTO " . $this->table . " (" . implode(',', $columns) . ") VALUES (" . implode(',', $placeholders) . ")";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':cita', $datos['id_cita']);
-        $stmt->bindParam(':monto', $datos['monto']);
-        $stmt->bindParam(':descuento', $datos['descuento']);
-        $stmt->bindParam(':metodo', $datos['metodo_pago']);
-        $stmt->bindParam(':obs', $datos['observaciones']);
-
+        // ligar parámetros dinámicamente
+        foreach ($params as $key => $val) {
+            if ($key === ':idcot' || $key === ':cita') $stmt->bindValue($key, $val, PDO::PARAM_INT);
+            else $stmt->bindValue($key, $val);
+        }
         return $stmt->execute();
     }
 
     // 2. NUEVO: LISTAR PAGOS (Historial de Caja)
     public function listar($inicio = null, $fin = null) {
         // Consultar pagos incluyendo resumen de cuotas y conceptos (servicio/producto)
-        $query = "SELECT p.id_pago, p.monto, p.metodo_pago, p.fecha_pago, p.observaciones, 
-                    u.nombre as paciente, 
-                 c.id_cita as id_cita,
-                    GROUP_CONCAT(DISTINCT COALESCE(s.nombre_servicio, pd.descripcion) SEPARATOR ', ') as conceptos,
-                    COUNT(DISTINCT pc.id_cuota) as total_cuotas,
-                    SUM(CASE WHEN pc.pagada = 1 THEN 1 ELSE 0 END) as cuotas_pagadas_total,
-                         SUM(CASE WHEN pc.pagada = 1 AND DATE(pc.fecha_pago) BETWEEN :inicio AND :fin THEN 1 ELSE 0 END) as cuotas_pagadas_en_rango,
-                         SUM(CASE WHEN pc.pagada = 1 AND DATE(pc.fecha_pago) BETWEEN :inicio AND :fin THEN pc.monto ELSE 0 END) as monto_cuotas_en_rango
-                FROM " . $this->table . " p
-                LEFT JOIN citas c ON p.id_cita = c.id_cita
-                LEFT JOIN usuarios u ON c.id_paciente = u.id_usuario
-                LEFT JOIN servicios s ON c.id_servicio = s.id_servicio
-                LEFT JOIN pagos_detalle pd ON p.id_pago = pd.id_pago
-                LEFT JOIN pagos_cuotas pc ON p.id_pago = pc.id_pago";
+        // Usar subconsultas para evitar duplicados por joins y garantizar conteos correctos
+        $query = "SELECT p.id_pago, p.monto, p.metodo_pago, p.fecha_pago, p.observaciones,
+                         u.nombre as paciente,
+                         c.id_cita as id_cita,
+                         (
+                            SELECT GROUP_CONCAT(DISTINCT COALESCE(s2.nombre_servicio, pd2.descripcion) SEPARATOR ', ')
+                            FROM pagos_detalle pd2
+                            LEFT JOIN servicios s2 ON pd2.tipo = 'Servicio' AND pd2.id_referencia = s2.id_servicio
+                            WHERE pd2.id_pago = p.id_pago
+                         ) as conceptos,
+                         (SELECT COUNT(*) FROM pagos_cuotas pc2 WHERE pc2.id_pago = p.id_pago) as total_cuotas,
+                         (SELECT COUNT(*) FROM pagos_cuotas pc2 WHERE pc2.id_pago = p.id_pago AND pc2.pagada = 1) as cuotas_pagadas_total,
+                         (SELECT COUNT(*) FROM pagos_cuotas pc2 WHERE pc2.id_pago = p.id_pago AND pc2.pagada = 1 AND DATE(pc2.fecha_pago) BETWEEN :inicio AND :fin) as cuotas_pagadas_en_rango,
+                         (SELECT COALESCE(SUM(pc2.monto),0) FROM pagos_cuotas pc2 WHERE pc2.id_pago = p.id_pago AND pc2.pagada = 1 AND DATE(pc2.fecha_pago) BETWEEN :inicio AND :fin) as monto_cuotas_en_rango
+                  FROM " . $this->table . " p
+                  LEFT JOIN citas c ON p.id_cita = c.id_cita
+                  LEFT JOIN usuarios u ON c.id_paciente = u.id_usuario
+                  LEFT JOIN servicios s ON c.id_servicio = s.id_servicio
+                  LEFT JOIN pagos_detalle pd ON p.id_pago = pd.id_pago
+                  ";
 
         $condiciones = [];
         if ($inicio && $fin) {
@@ -65,20 +75,17 @@ class Pago {
         }
 
         if (count($condiciones) > 0) {
-            // incluir también pagos que tengan cuotas pagadas dentro del rango
-            $where = "(" . implode(' AND ', $condiciones) . ") OR (pc.pagada = 1 AND DATE(pc.fecha_pago) BETWEEN :inicio AND :fin)";
-            $query .= " WHERE " . $where;
+            $query .= " WHERE " . implode(' AND ', $condiciones);
         }
 
         $query .= " GROUP BY p.id_pago ORDER BY p.fecha_pago DESC";
 
         $stmt = $this->conn->prepare($query);
-
+        // ligar parámetros para las subconsultas y filtros
         if ($inicio && $fin) {
             $stmt->bindParam(':inicio', $inicio);
             $stmt->bindParam(':fin', $fin);
         } else {
-            // evitar error al no ligar parámetros usados en SUM(... BETWEEN :inicio AND :fin)
             $dummyStart = date('Y-m-d');
             $dummyEnd = date('Y-m-d');
             $stmt->bindParam(':inicio', $dummyStart);
